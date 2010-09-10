@@ -155,7 +155,7 @@ module ActsAsRevisionable
     
     # Create a revision record based on this record and save it to the database.
     def create_revision!
-      revision = RevisionRecord.new(self, acts_as_revisionable_options[:encoding])
+      revision = RevisionRecord.new(self, acts_as_revisionable_options[:encoding], acts_as_revisionable_options[:compression])
       revision.save!
       return revision
     end

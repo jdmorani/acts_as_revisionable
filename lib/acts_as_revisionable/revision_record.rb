@@ -6,6 +6,7 @@ module ActsAsRevisionable
   
     before_create :set_revision_number
     attr_reader :data_encoding
+    attr_reader :data_compression
     
     set_table_name :revision_records
   
@@ -46,19 +47,20 @@ module ActsAsRevisionable
     
     # Create a revision record based on a record passed in. The attributes of the original record will
     # be serialized. If it uses the acts_as_revisionable behavior, associations will be revisioned as well.
-    def initialize (record, encoding = :ruby)
+    def initialize (record, encoding = :ruby, compression = true)
       super({})
       @data_encoding = encoding
+      @data_compression = (compression == nil || compression == true) ? true : false
       self.revisionable_type = record.class.base_class.name
       self.revisionable_id = record.id
       associations = record.class.revisionable_associations if record.class.respond_to?(:revisionable_associations)
-      self.data = Zlib::Deflate.deflate(serialize_hash(serialize_attributes(record, associations)))
+      self.data = @data_compression ? Zlib::Deflate.deflate(serialize_hash(serialize_attributes(record, associations))) : serialize_hash(serialize_attributes(record, associations))
     end
   
     # Returns the attributes that are saved in the revision.
     def revision_attributes
       return nil unless self.data
-      uncompressed = Zlib::Inflate.inflate(self.data)
+      uncompressed = @data_compression ? Zlib::Inflate.inflate(self.data) : self.data
       deserialize_hash(uncompressed)
     end
   
@@ -104,7 +106,7 @@ module ActsAsRevisionable
     private
   
     def serialize_hash (hash)
-      encoding = data_encoding.blank? ? :ruby : data_encoding
+      encoding = @data_encoding.blank? ? :ruby : @data_encoding
       case encoding.to_sym
       when :yaml
         return YAML.dump(hash)
